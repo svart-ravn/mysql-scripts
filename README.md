@@ -2,7 +2,7 @@
 short bash, python scripts
 
 
-##### replica_behind_master.sh <$interval_in_seconds>
+##### replica-behind-master.sh <$interval_in_seconds>
 ```
 used to show how slave lags behind the master
 :~$ ./replica_behind_master.sh 5
@@ -28,5 +28,25 @@ going to sleep for 5s
    Yes   Yes |        1m32s |   38.00    25.482 |         2 | 3s
    Yes   Yes |           0s |   18.40    25.406 |         2 | 0s
    Yes   Yes |           0s |    0.00    25.139 |         2 | 0s
+
+```
+
+##### split-sql-dump.awk
+```
+Used to split single dump file into several sql files: one file with structure per table. Plus many files with data
+
+sample calls:
+
+split all tables from <mysql_dump_file.sql> into several tables
+> awk -v SPLIT_FOLDER="splitted_dump" -f split-sql-dump.awk -f mysql_dump_file.sql
+
+split all tables from <mysql_dump_file.sql> with names starting with either "tbl" or "login" into several tables
+> awk -v INCLUDE="^tbl|^login" -v SPLIT_FOLDER="splitted_dump" -f split-sql-dump.awk -f mysql_dump_file.sql
+
+the same as previous except we are excluding single table
+> awk -v INCLUDE="^tbl|^login" --EXCLUDE="tbl_User" -v SPLIT_FOLDER="splitted_dump" -f split-sql-dump.awk -f mysql_dump_file.sql
+
+search for table "tbl_User". Split it and all after it
+> awk -v STARTING_TABLE="tbl_User" -v SPLIT_FOLDER="splitted_dump" -f split-sql-dump.awk -f mysql_dump_file.sql
 
 ```
