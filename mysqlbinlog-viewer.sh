@@ -167,6 +167,22 @@ function filter(){
 }
 
 
+function show_delta(){
+#   local COL="$(cat - | awk '{print $1}')"
+#   local D="$(cat -)"
+#   echo "$COL"
+   if [[ "$COL" == "...." || "$COL" == "-DTM" ]]; then
+      echo "inside"
+      cat -
+   else
+#      echo "::"
+#      cat - | echo
+#      echo =="$D"
+       echo "$1" | awk '{if (NR > 2) { for(i=3;i<=NF;i++){$i = $i"(" $i-$(i-1) ")"}} print}'
+   fi
+}
+
+
 function draw(){
    DATA="$1"
 #   RES=$(echo "$DATA" | awk '{sum += $1; if(length($2) > maxlen){maxlen=length($2)}}END{print sum, maxlen}')
@@ -174,7 +190,9 @@ function draw(){
 #   PAD_1COL=$(($(echo $RES | cut -d ' ' -f2)+2))
 #   PAD_2COL=$(echo $SUM | wc -c)
 #   echo "$DATA" | awk -v sum=$SUM -v pad1=$PAD_1COL -v pad2=$PAD_2COL '{val=sprintf("%6.2f", 100*$1/sum); col1=sprintf("%" pad1 "s", $2); col2=sprintf("%" pad2 "s", $1); print col1, " | ", col2}' | sort
-   echo "$DATA" | LANG=C sort | column -t
+#   echo "$DATA" | LANG=C sort | column -t
+#   log "======================================================="
+   show_delta "$DATA" | LANG=C sort | column -t
    echo -e "\nPress =/- to add/remove additional column with interval: ${INTERVAL}s"
    info
 }
