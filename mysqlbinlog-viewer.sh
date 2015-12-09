@@ -12,7 +12,7 @@ END=
 
 # ./test.sh --action parse --range 65 --output /tmp/output_data
 # ./test.sh --action view --start="2015-11-30 12:11:09" --interval 3 --output /tmp/output_data
-RANGE=
+FILES_RANGE=
 FILE=
 
 # parse, view
@@ -29,13 +29,13 @@ DATA=
 LOG_BIN_INDEX=
 
 
-FILES=
+FILES_LIST=
 
 
 # -------------------------------------------------------------------------------------------------------------------
 function init(){
    START=$(date +%s -d "$START_DTM")
-   END=$(date +%s -d "'$END_DTM'")
+   END=$(date +%s -d "$END_DTM")
    LOG_BIN_INDEX=$(mysql -e 'show variables' | grep -w log_bin_index | awk '{print $2}' | sed 's/index$//')
    SHIFT=$(human_time_to_seconds $SHIFT)
    test -z "$SHIFT" && SHIFT=0
@@ -45,7 +45,7 @@ function init(){
 function info(){
    echo "output: $OUTPUT_FOLDER"
    echo "action: $ACTION"
-   echo " range: $RANGE"
+   echo " range: $FILES_RANGE"
    echo " start: $START_DTM ($START) - $END_DTM ($END)"
    echo " inter: $INTERVAL"
    echo " actKEY: $ACTION_KEY"
@@ -69,7 +69,7 @@ function get_long_options(){
          --action|-a) ACTION="${ARGUMENTS[index]}";;
          --start|-s) START_DTM="${ARGUMENTS[index]}";;
          --end|-e) END_DTM="${ARGUMENTS[index]}";;
-         --range|-r) RANGE="${ARGUMENTS[index]}";;
+         --files-range|-r) FILES_RANGE="${ARGUMENTS[index]}";;
          --output|-o) OUTPUT_FOLDER="${ARGUMENTS[index]}";;
          --file|-f) FILE="${ARGUMENTS[index]}";;
          --threads|-t) THREADS="${ARGUMENTS[index]}";;
@@ -110,10 +110,10 @@ function extract_binlogs_by_date(){
    for F in $(ls $LOG_BIN_INDEX*); do
       LAST_MOD=$(stat --format="%Z" "$F")
       if [ $LAST_MOD -ge $START ] && [ $LAST_MOD -le $END ]; then
-         test -z "$FILES" && FILES="$FILES $PREV"
-         FILES="$FILES $F"
+         test -z "$FILES_LIST" && FILES_LIST="$FILES_LIST $PREV"
+         FILES_LIST="$FILES_LIST $F"
       elif [ $LAST_MOD -gt $END ]; then
-         FILES="$FILES $F"
+         FILES_LIST="$FILES_LIST $F"
          break
       elif [ $LAST_MOD -lt $START ]; then
          PREV=$F
@@ -133,15 +133,15 @@ function is_number() {
 
 
 function extract_binlogs_by_range(){
-   local FROM=$(echo $RANGE | cut -d- -f1 | sed 's/^[0]*//g')
-   local TO=$(echo $RANGE | cut -d- -f2 | sed 's/^[0]*//g')
+   local FROM=$(echo $FILES_RANGE | cut -d- -f1 | sed 's/^[0]*//g')
+   local TO=$(echo $FILES_RANGE | cut -d- -f2 | sed 's/^[0]*//g')
    test -z "$TO" && TO=$FROM
 
    for F in $(ls $LOG_BIN_INDEX*); do
       ID=$(echo "$F" | awk -F "." '{print $NF}' | sed 's/^[0]*//g')
       $(is_number $ID) || continue
       if [ $ID -ge $FROM ] && [ $ID -le $TO ]; then
-         FILES="$FILES $F"
+         FILES_LIST="$FILES_LIST $F"
       elif [ $ID -gt $TO ]; then
          break
       fi
@@ -150,7 +150,7 @@ function extract_binlogs_by_range(){
 
 
 function extract_binlogs_by_file(){
-   FILES="$FILE"
+   FILES_LIST="$FILE"
 }
 
 
@@ -160,24 +160,17 @@ function filter(){
       END=$(($START+$INTERVAL))
       #log "test"
       #log "::$START - $END, $INTERVAL :::: $(date -d @$START), $(date -d @$END) "
-      cat - | awk -v start=$START -v end=$END '{command="date -d \"" $1 " " $2  "\" +%s"; command | getline val;  if (val >= start && val < end){print $3"."$4}}'
+      cat - | awk -v start=$START -v end=$END '{command="date -d \"" $1 " " $2  "\" +%s"; command | getline val;  if (val >= start && val < end){print $3}}'
    else
-      cat - | awk '{print $3"."$4}'
+      cat - | awk '{print $3}'
    fi
 }
 
 
 function show_delta(){
-#   local COL="$(cat - | awk '{print $1}')"
-#   local D="$(cat -)"
-#   echo "$COL"
    if [[ "$COL" == "...." || "$COL" == "-DTM" ]]; then
-      echo "inside"
       cat -
    else
-#      echo "::"
-#      cat - | echo
-#      echo =="$D"
        echo "$1" | awk '{if (NR > 2) { for(i=3;i<=NF;i++){$i = $i"(" $i-$(i-1) ")"}} print}'
    fi
 }
@@ -185,13 +178,6 @@ function show_delta(){
 
 function draw(){
    DATA="$1"
-#   RES=$(echo "$DATA" | awk '{sum += $1; if(length($2) > maxlen){maxlen=length($2)}}END{print sum, maxlen}')
-#   SUM=$(echo $RES | cut -d ' ' -f1)
-#   PAD_1COL=$(($(echo $RES | cut -d ' ' -f2)+2))
-#   PAD_2COL=$(echo $SUM | wc -c)
-#   echo "$DATA" | awk -v sum=$SUM -v pad1=$PAD_1COL -v pad2=$PAD_2COL '{val=sprintf("%6.2f", 100*$1/sum); col1=sprintf("%" pad1 "s", $2); col2=sprintf("%" pad2 "s", $1); print col1, " | ", col2}' | sort
-#   echo "$DATA" | LANG=C sort | column -t
-#   log "======================================================="
    show_delta "$DATA" | LANG=C sort | column -t
    echo -e "\nPress =/- to add/remove additional column with interval: ${INTERVAL}s"
    info
@@ -231,17 +217,18 @@ info
 if [ $ACTION == "parse" ]; then
    if [ ! -z "$FILE" ]; then
       extract_binlogs_by_file
-   elif [ -z "RANGE" ]; then
+   elif [ -z "FILES_RANGE" ]; then
       extract_binlogs_by_date
    else
       extract_binlogs_by_range
    fi
 
    mkdir -p $OUTPUT_FOLDER
-   echo $FILES | tr ' ' ' \n' | xargs -P $THREADS -i bash -c "mysqlbinlog -v {} | grep -e Table_map -e STMT_END_F | awk 'NR%2{printf \$0\" \";next;}1' | awk '{gsub(\"_rows\", \"\", \$25); split(\$11, arr, \".\"); print \$1, \$2, arr[1], arr[2], tolower(\$25)}' | sed -e 's/:$//g' -e 's/[#\`]//g' > $OUTPUT_FOLDER/file.\$(echo {} | awk -F "." '{print \$NF}').raw"
-fi
 
+   echo $FILES_LIST | tr ' ' '\n' | xargs -P $THREADS -i bash -c "mysqlbinlog -v {} | grep -e Table_map -e STMT_END_F | awk '\$NF == \"STMT_END_F\"{print \$0, val; val = \"\"} \$NF != \"STMT_END_F\" {val = val \",\" \$11} ' | awk '{n=split(\$NF, arr, \",\"); for(i=2; i<=n;i++){print \$1, \$2, arr[i], \$10}}' | sed -e 's/_rows:$//g' -e 's/[#\`]//g' > $OUTPUT_FOLDER/file.\$(echo {} | awk -F "." '{print \$NF}').raw"
 
+fi 
+ 
 if [ $ACTION == "overview" ]; then
    echo "viewing..."
 
@@ -250,9 +237,8 @@ if [ $ACTION == "overview" ]; then
       view_overall
       while [[ ! $KEY == "=" && ! $KEY == "-" ]]; do
          read -s -t 1 -n 1 KEY
-         #echo "res="$KEY
          ACTION_KEY=$KEY
-         test "$ACTION_KEY" == "=" && START=$(($START+$SHIFT+$INTERVAL))
+         test "$ACTION_KEY" == "=" && START=$(($START+$SHIFT))
          sleep 0.3
       done
       KEY=
@@ -260,13 +246,10 @@ if [ $ACTION == "overview" ]; then
    done
 fi
 
+
 if [ $ACTION == "view" ]; then
    echo "not implemented"
 fi
 
 
 exit 0
-
-# TODO list:
-# 1. many queries per one commit
-# 4. shift and interval can be 10m2s
