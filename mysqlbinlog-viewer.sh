@@ -42,20 +42,49 @@ function init(){
 }
 
 
-function info(){
-   echo "output: $OUTPUT_FOLDER"
-   echo "action: $ACTION"
-   echo " range: $FILES_RANGE"
-   echo " start: $START_DTM ($START) - $END_DTM ($END)"
-   echo " inter: $INTERVAL"
-   echo " actKEY: $ACTION_KEY"
-   echo " shift: $SHIFT"
-   echo " filter: $FILTER"
-}
-
-
 function usage(){
-   echo "usage"
+cat << __USAGE__ >&2
+
+Usage $0 --action --start --end --files-range --output --file --threads --filter --interval --shift
+
+   --action: 
+      parse, overview
+
+   --start, --end: 
+      period of time to parse
+
+   --files-range:
+      00064-00089. list of binlog files
+
+   --file:
+      parse single file outside out binlogs
+
+   --output:
+      target folder
+
+   --threads:
+      amount of threads used to parse files
+
+   --filter:
+      used to overview. simple grep to filter 'db.table'
+
+   --shift:
+      period of time to add to --start to get next inteval
+
+   --interval:
+      length of time used show 
+
+   --shift, --inteval, --start examples:
+    
+   {start, shift, interval} = {01:10:12, 60, 10}
+   1 -> {01:10:12, 01:10:22}
+   2 -> {01:11:12, 01:11:22}
+   3 -> {01:12:12, 01:12:22}
+   4 -> {01:13:12, 01:13:22}
+
+
+__USAGE__
+
 }
 
 
@@ -180,7 +209,6 @@ function draw(){
    DATA="$1"
    show_delta "$DATA" | LANG=C sort | column -t
    echo -e "\nPress =/- to add/remove additional column with interval: ${INTERVAL}s"
-   info
 }
 
 
@@ -210,9 +238,6 @@ function view_overall(){
 get_long_options "$@"
 
 init
-
-info
-
 
 if [ $ACTION == "parse" ]; then
    if [ ! -z "$FILE" ]; then
