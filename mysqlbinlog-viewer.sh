@@ -208,7 +208,7 @@ function show_delta(){
 function draw(){
    DATA="$1"
    show_delta "$DATA" | LANG=C sort | column -t
-   echo -e "\nPress =/- to add/remove additional column with interval: ${INTERVAL}s"
+   echo -e "\nPress =/- to add/remove additional column with {shift, interval}: {${SHIFT}s, ${INTERVAL}s}"
 }
 
 
@@ -269,11 +269,6 @@ if [ $ACTION == "overview" ]; then
       KEY=
       sleep 0.3
    done
-fi
-
-
-if [ $ACTION == "view" ]; then
-   echo "not implemented"
 fi
 
 
