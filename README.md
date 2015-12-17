@@ -50,3 +50,30 @@ search for table "tbl_User". Split it and all after it
 > awk -v STARTING_TABLE="tbl_User" -v SPLIT_FOLDER="splitted_dump" -f split-sql-dump.awk -f mysql_dump_file.sql
 
 ```
+
+##### top-genlog-online.sh
+```
+Script used to do the following stuff:
+- resets veriable 'general_log_file'
+- enables gen_log
+- sleeps for $TIME seconds
+- disables gen_log
+- parses tmp general log file using pt-query-digest
+- displays the results and quit
+- restore 'general_log_file' variable to default value
+
+it's just a light wrapper over the pt-query-digest.
+
+Requires:
+- pt-query-digest been in $PATH
+- you can provide --sudo-user to remove tmp general log file (mysql by default)
+
+sample calls:
+
+runs for 10s and removes tmp gen log file
+> ./tmp-genlog-online.sh --time 10
+
+runs for 30s and doesn't remove tmp gen log file
+> ./tmp-genlog-online.sh --sudo-user "" 
+
+```
