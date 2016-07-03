@@ -92,31 +92,35 @@ function quick_recover(){
    seq $MIN_ID $MAX_ID | paste - - - - - - - - -  -d ',' | xargs -P 5 -i bash -c "try_to_recover_row {}"
 }
 
+
+function batch_recovery(){
+   IDS_TO_CHECK=$(quick_recover 2>&1 | awk '{print $1}' | tr ',' ' ')
+
+   wait_for_mysql
+
+   info "Starting recovery for: $(echo $IDS_TO_CHECK | wc -m) rows"
+   for ID in $IDS_TO_CHECK; do
+      info "checking $ID:"
+
+      $MYSQL_CMD -v -e "insert into $DEST_TABLE select * from $TABLE where $PK=$ID" >/dev/null 2>&1
+      if [ $? -ne 0 ]; then
+         error $ID
+         wait_for_mysql
+      fi
+   done
+}
+
+
 # ---------------------------------------------- MAIN ----------------------------------------------------------
 check_options || exit 1
-
-
 init || exit 1
 
 
 info "Starting recovery..."
 
 
-IDS_TO_CHECK=$(quick_recover 2>&1 | awk '{print $1}' | tr ',' ' ')
+batch_recovery
 
-wait_for_mysql
-
-info "Starting recovery for: $(echo $IDS_TO_CHECK | wc -m) rows"
-for ID in $IDS_TO_CHECK; do
-   info "checking $ID:"
-
-   $MYSQL_CMD -v -e "insert into $DEST_TABLE select * from $TABLE where $PK=$ID" >/dev/null 2>&1
-   if [ $? -ne 0 ]; then
-      error $ID
-      wait_for_mysql
-   fi
-done
 
 echo "Completed. OK!"
-
 exit 0
