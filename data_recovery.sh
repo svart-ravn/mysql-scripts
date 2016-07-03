@@ -6,7 +6,6 @@ DB=$1
 TABLE=$2
 DEST_TABLE="recovered_${TABLE}"
 
-
 MIN_ID=
 MAX_ID=
 
@@ -46,7 +45,6 @@ function wait_for_mysql(){
    while [ $RC -eq 1 ]; do
       $MYSQL_CMD -e "select 1" >/dev/null 2>&1
       RC=$?
-      error "Waiting for MySQL to be started...."
       sleep 1
    done
 
@@ -74,21 +72,25 @@ function init(){
 }
 
 
-function recover(){
-   for ID in $(seq $MIN_ID $MAX_ID); do 
+function try_to_recover_row(){
+   local ID=$1
 
-      $MYSQL_CMD -e "insert into $DEST_TABLE select * from $TABLE where $PK=$ID" >/dev/null 2>&1
-      if [ $? -eq 0 ]; then
-         info "$ID is ok"
-      else
-         error "$ID is not migrated"
-         wait_for_mysql
-      fi
-   done
-
-   return 0
+   $MYSQL_CMD -v -e "insert into $DEST_TABLE select * from $TABLE where $PK in ($ID)" >/dev/null 2>&1
+   if [ $? -ne 0 ]; then
+      echo $ID
+      wait_for_mysql
+   fi
 }
 
+function quick_recover(){
+   export -f try_to_recover_row
+   export -f wait_for_mysql
+   export MYSQL_CMD
+   export DEST_TABLE
+   export TABLE
+   export PK
+   seq $MIN_ID $MAX_ID | paste - - - - - - - - -  -d ',' | xargs -P 5 -i bash -c "try_to_recover_row {}"
+}
 
 # ---------------------------------------------- MAIN ----------------------------------------------------------
 check_options || exit 1
@@ -98,8 +100,22 @@ init || exit 1
 
 
 info "Starting recovery..."
-recover
 
+
+IDS_TO_CHECK=$(quick_recover 2>&1 | awk '{print $1}' | tr ',' ' ')
+
+wait_for_mysql
+
+info "Starting recovery for: $(echo $IDS_TO_CHECK | wc -m) rows"
+for ID in $IDS_TO_CHECK; do
+   info "checking $ID:"
+
+   $MYSQL_CMD -v -e "insert into $DEST_TABLE select * from $TABLE where $PK=$ID" >/dev/null 2>&1
+   if [ $? -ne 0 ]; then
+      error $ID
+      wait_for_mysql
+   fi
+done
 
 echo "Completed. OK!"
 
