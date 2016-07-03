@@ -100,7 +100,13 @@ function extract_value(){
 # ----------------------------------------------------------------------------------------------
 # ------------------------------------------- MAIN ---------------------------------------------
 # ----------------------------------------------------------------------------------------------
-START_LAG=$(mysql -e 'show slave status\G' | grep -w Seconds_Behind_Master  | cut -d ':' -f 2- | sed 's/^ //g' )
+STATUS="$(mysql -e 'show slave status\G')"
+if [ -z "$STATUS" ]; then
+    echo "Not a replica"
+    exit 1
+fi
+
+START_LAG=$(echo "$STATUS" | grep -w Seconds_Behind_Master  | cut -d ':' -f 2- | sed 's/^ //g' )
 PREV_LAG=$START_LAG
 ITERATIONS=1
 
