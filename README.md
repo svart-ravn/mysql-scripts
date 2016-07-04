@@ -77,3 +77,12 @@ runs for 30s and doesn't remove tmp gen log file
 > ./tmp-genlog-online.sh --sudo-user "" 
 
 ```
+
+##### data_recovery.sh
+```
+Used to recover data in case if ibd was corrupted
+
+sample call:
+
+> ./data_recovery.sh <database> <tablename>
+```
