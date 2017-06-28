@@ -136,7 +136,8 @@ while :; do
     else
         SPS=$(python -c "print('%0.2f' % (($PREV_LAG-$CURRENT_LAG)/$SLEEP.))")
         SPS_AVG=$(python -c "print('%0.3f' % (($START_LAG-$CURRENT_LAG)/$ITERATIONS./$SLEEP))")
-        RELAY_LOG_FILE_CNT=$(sudo -u mysql ls $DATADIR | grep $RELAY_LOG_FILE | grep -v index | wc -w)
+        # quick fix to avoid script failure if mysql supports multi-master replication
+        [ ! -z "$RELAY_LOG_FILE" ] && RELAY_LOG_FILE_CNT=$(sudo -u mysql ls $DATADIR | grep $RELAY_LOG_FILE | grep -v index | wc -w)
 
         print_row $IO_THREAD $SQL_THREAD $CURRENT_LAG "$SPS" $SPS_AVG $RELAY_LOG_FILE_CNT
 
