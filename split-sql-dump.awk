@@ -2,7 +2,7 @@ function closing_file(){
     if (PRINT_ROW == 1){
         close(CURRENT_FILE_NAME"_"CHUNK_NUMBER".sql")
         print CURRENT_FILE_NAME"_"CHUNK_NUMBER".sql"
-	print "# line number:", NR
+	print "# line number:", NR > "/dev/stderr"
     }
     CHUNK_NUMBER = CHUNK_NUMBER + 1
     AMOUNT_OF_ROWS = 0
