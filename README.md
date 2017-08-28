@@ -38,7 +38,7 @@ Used to split single dump file into several sql files: one file with structure p
 sample calls:
 
 split all tables from <mysql_dump_file.sql> into several tables
-> awk -V DRY_RUN=0 -v SPLIT_FOLDER="splitted_dump" -f split-sql-dump.awk mysql_dump_file.sql
+> awk -v DRY_RUN=0 -v SPLIT_FOLDER="splitted_dump" -f split-sql-dump.awk mysql_dump_file.sql
 
 split all tables from <mysql_dump_file.sql> with names starting with either "tbl" or "login" into several tables
 > awk -v INCLUDE="^tbl|^login" -v SPLIT_FOLDER="splitted_dump" -f split-sql-dump.awk mysql_dump_file.sql
