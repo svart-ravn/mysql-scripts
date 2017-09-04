@@ -34,6 +34,7 @@ BEGIN{
 }
 
 /^-- Table structure for table/{
+    closing_file()
     if ( match($0, "`.*`") > 0 ){
         TABLE_NAME=substr($0, RSTART + 1, RLENGTH - 2)
         IS_PRINTING_TABLE_DEFINITION=1
